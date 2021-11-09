@@ -23,13 +23,19 @@ class Region():
         self.canvas = Canvas(self.root, width=min(self.width, self.height),
                              height=min(self.width, self.height), background='white')
         self.canvas.pack()
+        self.root.bind('<Escape>', lambda e: self.root.destroy())
         self.canvas.bind('<Button-1>', self.click)
 
     def coords_transform(self, X):
-        if not isinstance(X, np.ndarray):
-            X = np.array(X)
+        X = np.array(X)
         X *= self.mult
         X[-1] = self.height-X[-1]
+        return X
+
+    def _coords_transform(self, X):
+        X = np.array(X)
+        X[-1] = self.height-X[-1]
+        X = X/self.mult
         return X
 
     def click(self, event: Event) -> None:
@@ -65,24 +71,24 @@ class Region():
             color (str, optional): Color of the circle. Defaults to 'black'.
             **kargs (args): Another args for the create_oval canvas method
         """
-        r = r*self.mult
-        X = self.coords_transform(X)
-        x = X[0]
-        y = X[1]
-        self.canvas.create_oval(x-r, y-r, x+r, y+r, fill=color, **kargs)
+        rA = r*self.mult
+        XA = self.coords_transform(X)
+        x = XA[0]
+        y = XA[1]
+        self.canvas.create_oval(x-rA, y-rA, x+rA, y+rA, fill=color, **kargs)
 
-    def create_line(self, X0: list[float, float], XF: list[float, float], color: str = 'black', **kargs) -> None:
+    def create_line(self, x0: list[float, float], xf: list[float, float], color: str = 'black', **kargs) -> None:
         """Draws a line in the specified coords
 
         Args:
-            X0 (list): start coords of the line
-            XF (list): end coords of the line
+            x0 (list): start coords of the line
+            xf (list): end coords of the line
             color (str, optional): Color of the line segment. Defaults to 'black'.
             **kargs (args): Another args for the create_line canvas method
 
         """
-        X0 = self.coords_transform(X0)
-        XF = self.coords_transform(XF)
+        X0 = self.coords_transform(x0)
+        XF = self.coords_transform(xf)
         self.canvas.create_line(X0[0], X0[1], XF[1],
                                 XF[0], fill=color, **kargs)
 
