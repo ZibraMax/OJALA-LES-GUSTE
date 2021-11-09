@@ -24,6 +24,7 @@ class Region():
                              height=min(self.width, self.height), background='white')
         self.canvas.pack()
         self.root.bind('<Escape>', lambda e: self.root.destroy())
+        self.root.state('zoomed')
         self.canvas.bind('<Button-1>', self.click)
 
     def coords_transform(self, X):

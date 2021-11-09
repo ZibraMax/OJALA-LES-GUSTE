@@ -1,8 +1,25 @@
 from numpy.lib.function_base import append
-from Region import Region
-from Utils import point_to_line_distance as p2l
+from .Region import Region
+from .Solvers import *
+from .Colliders import *
 import numpy as np
 import time
+
+
+class Force(object):
+    """docstring for Force
+    """
+
+    def __init__(self, expresion, domain=None):
+        self.domain = domain
+        self.function = expresion
+        if not domain:
+            self.domain = [-np.inf, np.inf]
+
+    def __call__(self, t, obj):
+        if (t > self.domain[0] and t < self.domain[1]):
+            return self.function(t, obj)
+        return 0.0
 
 
 class Sim():
@@ -12,29 +29,36 @@ class Sim():
     def __init__(self, x_range, y_range):
         self.region = Region(x_range, y_range)
         self.nodes = []
-        self.walls = []
+        self.colliders = []
         self.t = 0.0
         self.region.canvas.bind('<Button-1>', self.click)
+        self.gen_forces = []
 
     def click(self, event):
         X = np.array([event.x, event.y])
         X = self.region._coords_transform(X)
-        node = Node(0.5, X, [0.0, 0.0])
-        node.add_force(lambda t, obj, **kargs: np.array([0.0, -9.81*node.m]))
+        masa = 0.5
+        if len(self.nodes) > 0:
+            masa = self.nodes[-1].m
+        node = Node(masa, X, [0.0, 0.0])
         self.add_node(node)
 
     def add_node(self, node):
+        for force in self.gen_forces:
+            node.add_force(force)
+        node.parent = self
+        node.id = len(self.nodes)
         self.nodes.append(node)
 
-    def add_wall(self, wall):
-        self.walls.append(wall)
+    def add_collider(self, collider):
+        self.colliders.append(collider)
 
     def update(self, dt):
         self.region.delete_all()
         for node in self.nodes:
             node.move(self.t, dt)
-            node.collide(self.walls)
-        self.draw_walls()
+            node.collide(self.colliders)
+        self.draw_colliders()
         self.draw_nodes()
         self.region.update()
         self.t += dt
@@ -44,9 +68,12 @@ class Sim():
         for node in self.nodes:
             node.draw(self.region)
 
-    def draw_walls(self):
-        for wall in self.walls:
-            wall.draw(self.region)
+    def draw_colliders(self):
+        for collider in self.colliders:
+            collider.draw(self.region)
+
+    def add_gen_force(self, force):
+        self.gen_forces.append(force)
 
     def run(self, dt=1/500):
 
@@ -55,61 +82,6 @@ class Sim():
                 self.update(dt)
         self.region.root.after(1, f)
         self.region.run()
-
-
-class Solver():
-    """docstring for solver
-    """
-
-    def __init__(self):
-        pass
-
-    def solve_euler(self, f, x0, xf, y0, n):
-        h = (xf-x0)/n
-        xi = x0
-        yi = y0
-        for _ in range(n):
-            yi += f(xi, yi)*h
-            xi += h
-        return yi
-
-    def solve(self, *args):
-        return self.solve_euler(*args)
-
-
-class LinealCollider():
-    """docstring for LinealCollider
-    """
-
-    def __init__(self, X0, XF):
-        X0 = np.array(X0)
-        XF = np.array(XF)
-        self.X0 = X0
-        self.XF = XF
-        self.delta = XF-X0
-        self.l = np.linalg.norm(self.delta)
-        self.n = np.array([-self.delta[1]/self.l, self.delta[0]/self.l])
-        self.color = 'black'
-
-    def callback(self, object):
-        pass
-
-    def draw(self, region):
-        region.create_line(self.X0, self.XF, color=self.color)
-
-
-class Wall(LinealCollider):
-    """docstring for Wall
-    """
-
-    def __init__(self, x0, xf):
-        LinealCollider.__init__(self, x0, xf)
-        self.color = 'blue'
-
-    def callback(self, object):
-        d, dx = p2l(object.U, self.X0, self.XF)
-        if d <= object.r:
-            object.V -= 2*np.dot(object.V, dx)*dx/d/d*0.95
 
 
 class Node():
@@ -122,12 +94,13 @@ class Node():
         self.V = np.array(V)
         self.forces = []
         self.solver = solver
+        self.parent = None
+        self.id = None
         if not solver:
             self.solver = Solver()
         self.r = r
         if not r:
             self.r = self.m/20
-        print(self.r)
 
     def collide(self, colliders):
         for collider in colliders:
@@ -136,7 +109,7 @@ class Node():
     def add_force(self, f):
         self.forces.append(f)
 
-    def move(self, t, dt, **kargs):
+    def move(self, t, dt):
         def f(t, y):
             return self.V
         self.U = self.solver.solve(f, t, t+dt, self.U, 1)
@@ -144,7 +117,7 @@ class Node():
         def f(t, y):
             sumatoria = 0.0
             for g in self.forces:
-                sumatoria += g(t, self, **kargs)
+                sumatoria += g(t, self)
             return sumatoria/self.m
         self.V = self.solver.solve(f, t, t+dt, self.V, 1)
 
@@ -161,16 +134,16 @@ if __name__ == '__main__':
         SIM = Sim([0, h], [0, h])
 
         wall = Wall([0.0, 0.0], [h, 0.0])
-        SIM.add_wall(wall)
+        SIM.add_collider(wall)
         wall = Wall([h, 0.0], [h, h])
-        SIM.add_wall(wall)
+        SIM.add_collider(wall)
         wall = Wall([h, h], [0.0, h])
-        SIM.add_wall(wall)
+        SIM.add_collider(wall)
         wall = Wall([0.0, h], [0.0, 0.0])
-        SIM.add_wall(wall)
+        SIM.add_collider(wall)
 
         node = Node(0.5, [0.5, 0.5], [1.0, 1.0], solver)
-        node.add_force(lambda t, obj, **kargs: np.array([0.0, -9.81*node.m]))
+        node.add_force(lambda t, obj: np.array([0.0, -9.81*node.m]))
         SIM.add_node(node)
 
         SIM.run()
