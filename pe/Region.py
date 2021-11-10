@@ -1,14 +1,23 @@
-import math
 from tkinter import Event, Tk, Canvas, W, E, NW
-import time
+from typing import Union
 import numpy as np
 
 
 class Region():
     """Creates the canvas drawing region
-    """
 
-    def __init__(self, x_range: list[float, float], y_range: list[float, float]) -> None:
+        Args:
+            x_range (Union[list, np.ndarray]): X range of canvas coordinates. Must be positive
+            y_range (Union[list, np.ndarray]): Y range of canvas coordinates. Must be positive
+        """
+
+    def __init__(self, x_range: Union[list, np.ndarray], y_range: Union[list, np.ndarray]) -> None:
+        """Creates the canvas drawing region
+
+        Args:
+            x_range (Union[list, np.ndarray]): X range of canvas coordinates. Must be positive
+            y_range (Union[list, np.ndarray]): Y range of canvas coordinates. Must be positive
+        """
 
         self.root = Tk()
         self.root.title('TEST')
@@ -27,13 +36,29 @@ class Region():
         self.root.state('zoomed')
         self.canvas.bind('<Button-1>', self.click)
 
-    def coords_transform(self, X):
+    def coords_transform(self, X: Union[list, np.ndarray]) -> np.ndarray:
+        """Transform from canvas coordinates to pixel coordinates
+
+        Args:
+            X (Union[list, np.ndarray]): Canvas coordinates
+
+        Returns:
+            np.ndarray: Pixel coordinates related to canvas coordinates
+        """
         X = np.array(X)
         X *= self.mult
         X[-1] = self.height-X[-1]
         return X
 
-    def _coords_transform(self, X):
+    def _coords_transform(self, X: Union[list, np.ndarray]) -> np.ndarray:
+        """Transforms from pixel coordinates to canvas coordinates
+
+        Args:
+            X (Union[list, np.ndarray]): Pixel coordinates
+
+        Returns:
+            np.ndarray: Canvas coordinates related to pixel coordinates
+        """
         X = np.array(X)
         X[-1] = self.height-X[-1]
         X = X/self.mult
@@ -63,16 +88,22 @@ class Region():
         """
         self.root.mainloop()
 
-    def create_text(self, X, text):
+    def create_text(self, X: Union[list, np.ndarray], text: str) -> None:
+        """Creates a text in the canvas
+
+        Args:
+            X (Union[list, np.ndarray]): Text position in canvas coordintaes (not pixels)
+            text (str): Text to be placed
+        """
         x = self.coords_transform(X)
         self.canvas.create_text(x[0], x[1], fill="black",
                                 font='20', text=text, anchor=W)
 
-    def create_circle(self, X: list[float, float], r: float, color: str = 'black', **kargs) -> None:
+    def create_circle(self, X: Union[list, np.ndarray], r: float, color: str = 'black', **kargs) -> None:
         """Draws a circle in the specified
 
         Args:
-            X (list): Center of the circle [x,y]
+            X (Union[list, np.ndarray]): Center of the circle [x,y]
             r (float): radius of the circle
             color (str, optional): Color of the circle. Defaults to 'black'.
             **kargs (args): Another args for the create_oval canvas method
@@ -83,12 +114,12 @@ class Region():
         y = XA[1]
         self.canvas.create_oval(x-rA, y-rA, x+rA, y+rA, fill=color, **kargs)
 
-    def create_line(self, x0: list[float, float], xf: list[float, float], color: str = 'black', **kargs) -> None:
+    def create_line(self, x0: Union[list, np.ndarray], xf: Union[list, np.ndarray], color: str = 'black', **kargs) -> None:
         """Draws a line in the specified coords
 
         Args:
-            x0 (list): start coords of the line
-            xf (list): end coords of the line
+            x0 (: Union[list, np.ndarray]): start coords of the line
+            xf (: Union[list, np.ndarray]): end coords of the line
             color (str, optional): Color of the line segment. Defaults to 'black'.
             **kargs (args): Another args for the create_line canvas method
 

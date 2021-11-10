@@ -1,33 +1,63 @@
-from numpy.lib.function_base import append, select
-from .Region import Region
+from .Region import Region, Event
 from .Solvers import *
 from .Colliders import *
 from .Utils import point_point_distance as p2p
 import numpy as np
-import time
 
 
 class Force(object):
-    """docstring for Force
+    """Creates a force
+
+    Args:
+        expresion (Callable): Force function. Functions can evaluate time and Node. Node has a parent attribute
+        domain (Union[list, np.ndarray], optional): Domain of the force functon. Defaults to None.
     """
 
-    def __init__(self, expresion, domain=None):
+    def __init__(self, expresion: Callable, domain: Union[list, np.ndarray] = None) -> None:
+        """Creates a force
+
+        Args:
+            expresion (Callable): Force function. Functions can evaluate time and Node. Node has a parent attribute
+            domain (Union[list, np.ndarray], optional): Domain of the force functon. Defaults to None.
+        """
         self.domain = domain
         self.function = expresion
         if not domain:
             self.domain = [-np.inf, np.inf]
 
-    def __call__(self, t, obj):
+    def __call__(self, t: float, obj: 'Node') -> np.ndarray:
+        """When the functions is called
+
+        Args:
+            t (float): Time
+            obj (Node): Node which the load is applied
+
+        Returns:
+            np.ndarray: Force value in x and y
+        """
         if (t > self.domain[0] and t < self.domain[1]):
             return self.function(t, obj)
         return 0.0
 
 
 class Sim():
-    """docstring for SIM
+    """Creates a simulation object
+
+    Args:
+        x_range (Union[list, np.ndarray]): X range of canvas coordinates. Must be positive
+        y_range (Union[list, np.ndarray]): Y range of canvas coordinates. Must be positive
+        dt (float, optional): Time step. Defaults to 1/500.
     """
 
-    def __init__(self, x_range, y_range, dt=1/500):
+    def __init__(self, x_range: Union[list, np.ndarray], y_range: Union[list, np.ndarray], dt: float = 1/500) -> None:
+        """Creates a simulation object
+
+        Args:
+            x_range (Union[list, np.ndarray]): X range of canvas coordinates. Must be positive
+            y_range (Union[list, np.ndarray]): Y range of canvas coordinates. Must be positive
+            dt (float, optional): Time step. Defaults to 1/500.
+        """
+
         self.region = Region(x_range, y_range)
         self.nodes = []
         self.colliders = []
@@ -50,7 +80,9 @@ class Sim():
         self.moving_mass = False
         self.move_flag = False
 
-    def info_text(self):
+    def info_text(self) -> None:
+        """Place information text in canvas
+        """
         deltax = self.region.xrange[-1] - self.region.xrange[0]
         deltay = self.region.yrange[-1] - self.region.yrange[0]
         self.region.create_text(
@@ -95,12 +127,23 @@ class Sim():
         self.region.create_text(
             [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.8], f'Con la rueda del mouse se puede aumentar o disminuir el dt')
 
-    def wheel(self, event):
+    def wheel(self, event: Event) -> None:
+        """Event when the mouse wheel turns
+
+        Args:
+            event (Event): Mouse wheel event
+        """
+
         delta = event.delta
         self.dt += 0.00005*np.sign(delta)
         self.dt = max(self.dt, 0.00001)
 
-    def keyup(self, event):
+    def keyup(self, event: Event) -> None:
+        """Event called when a key is presseed
+
+        Args:
+            event (Event): KeyPress event
+        """
         if event.char.lower() == 'g':
             self.gen_forces_trigger()
         elif event.char.lower() == 'p':
@@ -111,20 +154,37 @@ class Sim():
             self.moving_mass = not self.moving_mass
         self.update_graphics()
 
-    def gen_forces_trigger(self):
+    def gen_forces_trigger(self) -> None:
+        """Trigger the forces multiplier (1 to 0 or 0 to 1)
+        """
         self.gen_forces_mult = 1.0 - self.gen_forces_mult
 
-    def pause_trigger(self):
+    def pause_trigger(self) -> None:
+        """Pauses or resume the simulation
+        """
         if self.pause:
             self.pause = not self.pause
             self.run()
         else:
             self.pause = not self.pause
 
-    def add_spring(self, spring):
+    def add_spring(self, spring: 'Spring') -> None:
+        """Adds a spring to the simulation
+
+        Args:
+            spring (Spring): Spring to be added
+        """
         self.springs.append(spring)
 
-    def nearest_node(self, X):
+    def nearest_node(self, X: Union[list, np.ndarray]) -> int:
+        """Find the nearest node to the coordinates X
+
+        Args:
+            X (Union[list, np.ndarray]): X coordinates to find the nearest node
+
+        Returns:
+            int: Nearest node index
+        """
         mini = np.inf
         selected = None
         for i, node in enumerate(self.nodes):
@@ -134,7 +194,13 @@ class Sim():
                 selected = i
         return selected
 
-    def middle_click(self, event):
+    def middle_click(self, event: Event) -> None:
+        """Middle click event
+
+        Args:
+            event (Event): Middle click event
+        """
+
         X = np.array([event.x, event.y])
         X = self.region._coords_transform(X)
         masa = 0.5
@@ -145,7 +211,12 @@ class Sim():
         self.add_node(node)
         self.update_graphics()
 
-    def right_click(self, event):
+    def right_click(self, event: Event) -> None:
+        """Right click event
+
+        Args:
+            event (Event): Right click event
+        """
         X = self.region._coords_transform([event.x, event.y])
         if not self.adding_spring:
             if not self.adding_line:
@@ -171,7 +242,9 @@ class Sim():
             self.update_graphics()
             self.run()
 
-    def update_graphics(self):
+    def update_graphics(self) -> None:
+        """Draws all simulation elements in the current region
+        """
         self.region.delete_all()
         self.draw_colliders()
         self.draw_springs()
@@ -179,7 +252,12 @@ class Sim():
         self.info_text()
         self.region.update()
 
-    def move(self, event):
+    def move(self, event: Event) -> None:
+        """Mouse move event
+
+        Args:
+            event (Event): Mouse move event
+        """
 
         if self.moving_mass and self.move_flag:
             X = np.array([event.x, event.y])
@@ -188,7 +266,12 @@ class Sim():
             self.nodes[self.nearI].V = np.array([0.0, 0.0])
             # self.update_graphics()
 
-    def click(self, event):
+    def click(self, event: Event) -> None:
+        """Click event
+
+        Args:
+            event (Event): Click event
+        """
         X = np.array([event.x, event.y])
         X = self.region._coords_transform(X)
         if self.moving_mass:
@@ -207,17 +290,29 @@ class Sim():
             self.add_node(node)
         self.update_graphics()
 
-    def add_node(self, node):
+    def add_node(self, node: 'Node') -> None:
+        """Adds a node to the simulation
+
+        Args:
+            node (Node): Node to add
+        """
         for force in self.gen_forces:
             node.add_force(force)
         node.parent = self
         node.id = len(self.nodes)
         self.nodes.append(node)
 
-    def add_collider(self, collider):
+    def add_collider(self, collider: LinealCollider) -> None:
+        """Adds a Lineal Collider to the simulation
+
+        Args:
+            collider (LinealCollider): Lineal collider object to add
+        """
         self.colliders.append(collider)
 
-    def update(self):
+    def update(self) -> None:
+        """Runs a simulation frame
+        """
         if not self.adding_spring:
             for spring in self.springs:
                 spring.move()
@@ -232,22 +327,35 @@ class Sim():
             self.t += self.dt
         # time.sleep(1)
 
-    def draw_springs(self):
+    def draw_springs(self) -> None:
+        """Draws all springs in simulation
+        """
         for spring in self.springs:
             spring.draw(self.region)
 
-    def draw_nodes(self):
+    def draw_nodes(self) -> None:
+        """Draws all nodes in simulation
+        """
         for node in self.nodes:
             node.draw(self.region)
 
-    def draw_colliders(self):
+    def draw_colliders(self) -> None:
+        """Draws all colliders in simulation
+        """
         for collider in self.colliders:
             collider.draw(self.region)
 
-    def add_gen_force(self, force):
+    def add_gen_force(self, force: Union[Force, Callable]) -> None:
+        """Add a general force to the simulation. This force will be applied to all nodes
+
+        Args:
+            force (Union[Force, Callable]): Force to be applied
+        """
         self.gen_forces.append(force)
 
-    def run(self):
+    def run(self) -> None:
+        """Runs the simulation
+        """
         self.update_graphics()
 
         def f():
@@ -258,10 +366,26 @@ class Sim():
 
 
 class Node():
-    """docstring for Node
+    """Creates a node
+
+    Args:
+        m (float): Node mass
+        U (Union[list, np.ndarray]): Node initial position
+        V (Union[list, np.ndarray]): Node initial velocity
+        solver (Solver, optional): Solver to be used. Defaults to None.
+        r (float, optional): Node radius. Defaults to None.
     """
 
-    def __init__(self, m, U, V, solver=None, r=None):
+    def __init__(self, m: float, U: Union[list, np.ndarray], V: Union[list, np.ndarray], solver: Solver = None, r: float = None) -> None:
+        """Creates a node
+
+        Args:
+            m (float): Node mass
+            U (Union[list, np.ndarray]): Node initial position
+            V (Union[list, np.ndarray]): Node initial velocity
+            solver (Solver, optional): Solver to be used. Defaults to None.
+            r (float, optional): Node radius. Defaults to None.
+        """
         self.U = np.array(U)
         self.m = m
         self.V = np.array(V)
@@ -276,7 +400,9 @@ class Node():
         if not r:
             self.r = self.m/20
 
-    def object_collide(self):
+    def object_collide(self) -> None:
+        """Object object collision
+        """
         if not self.fixed:
             for i, o in enumerate(self.parent.nodes):
                 if not i == self.id:
@@ -314,15 +440,31 @@ class Node():
                         self.U += (1-self.fixed)*(dist-minDist) * \
                             np.array([dx, dy])/dist
 
-    def collide(self, colliders):
+    def collide(self, colliders: List[LinealCollider]) -> None:
+        """Makes the node collide with the colliders given by parameters
+
+        Args:
+            colliders (List[LinealCollider]): Colliders 
+        """
         self.object_collide()
         for collider in colliders:
             collider.callback(self)
 
-    def add_force(self, f):
+    def add_force(self, f: Union[Force, Callable]) -> None:
+        """Adds a force to the node
+
+        Args:
+            f (Union[Force,Callable]): Function to be added
+        """
         self.forces.append(f)
 
-    def move(self, t, dt):
+    def move(self, t: float, dt: float) -> None:
+        """Runs a simulation frem over the node
+
+        Args:
+            t (float): Time
+            dt (float): Delta time
+        """
         if not self.fixed:
             def f(t, y):
                 return self.V
@@ -335,10 +477,17 @@ class Node():
                 return sumatoria/self.m
             self.V = self.solver.solve(f, t, t+dt, self.V, 1)
 
-    def fix(self):
+    def fix(self) -> None:
+        """Locks the node movement
+        """
         self.fixed = not self.fixed
 
-    def draw(self, region):
+    def draw(self, region: Region) -> None:
+        """Draws the current node
+
+        Args:
+            region (Region): Canvas drawing region
+        """
         if self.fixed:
             region.create_circle(self.U, self.r, color='red')
         else:
@@ -346,10 +495,26 @@ class Node():
 
 
 class Spring():
-    """docstring for Spring
+    """Creates a spring between 2 nodes
+
+    Args:
+        k (float): Spring constant
+        d (float): Node damping
+        nodeI (Node): Initial node
+        nodeF (Node): End node
+
     """
 
-    def __init__(self, k, d, nodeI, nodeF):
+    def __init__(self, k: float, d: float, nodeI: Node, nodeF: Node) -> None:
+        """Creates a spring between 2 nodes
+
+        Args:
+            k (float): Spring constant
+            d (float): Node damping
+            nodeI (Node): Initial node
+            nodeF (Node): End node
+
+        """
         self.nodeI = nodeI
         self.nodeF = nodeF
         self.dx = nodeF.U-nodeI.U
@@ -369,13 +534,20 @@ class Spring():
         self.nodeI.add_force(fi)
         self.nodeF.add_force(ff)
 
-    def move(self):
+    def move(self) -> None:
+        """Updates spring position and forces
+        """
         self.dx = self.nodeF.U-self.nodeI.U
         ld = np.linalg.norm(self.dx)
         self.s = self.l-ld
         self.dir = np.array([self.dx[0]/ld, self.dx[1]/ld])
 
-    def draw(self, region):
+    def draw(self, region: Region) -> None:
+        """Draws the spring
+
+        Args:
+            region (Region): Canvas drawing region
+        """
         region.create_line(self.nodeI.U, self.nodeF.U,
                            color=self.color, width=3)
 

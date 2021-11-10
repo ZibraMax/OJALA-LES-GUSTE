@@ -1,11 +1,21 @@
+from typing import Tuple, Union
 import numpy as np
 
 
-def point_point_distance(p1, p2):
+def point_point_distance(p1: Union[list, np.ndarray], p2: Union[list, np.ndarray]) -> float:
+    """Calculates the distance between 2 points
+
+    Args:
+        p1 (list): First point
+        p2 (list): Second point
+
+    Returns:
+        float: Distance between point 1 and point 2
+    """
     return np.linalg.norm(np.array(p2)-np.array(p1))
 
 
-def point_to_line_distance(p, x0, xf):
+def point_to_line_distance(p: Union[list, np.ndarray], x0: Union[list, np.ndarray], xf: Union[list, np.ndarray]) -> Tuple[float, list]:
     x = p[0]
     y = p[1]
 
