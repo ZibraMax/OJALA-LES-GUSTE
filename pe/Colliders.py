@@ -20,7 +20,7 @@ class LinealCollider():
         pass
 
     def draw(self, region):
-        region.create_line(self.X0, self.XF, color=self.color)
+        region.create_line(self.X0, self.XF, color=self.color, width=10)
 
 
 class Wall(LinealCollider):
@@ -34,4 +34,5 @@ class Wall(LinealCollider):
     def callback(self, object):
         d, dx = p2l(object.U, self.X0, self.XF)
         if d <= object.r:
-            object.V -= 2*np.dot(object.V, dx)*dx/d/d*0.95
+            object.V -= 2*np.dot(object.V, dx)*dx/d/d*.95
+            object.U += dx/d*(d-object.r)

@@ -63,6 +63,11 @@ class Region():
         """
         self.root.mainloop()
 
+    def create_text(self, X, text):
+        x = self.coords_transform(X)
+        self.canvas.create_text(x[0], x[1], fill="black",
+                                font='20', text=text, anchor=W)
+
     def create_circle(self, X: list[float, float], r: float, color: str = 'black', **kargs) -> None:
         """Draws a circle in the specified
 
@@ -90,8 +95,8 @@ class Region():
         """
         X0 = self.coords_transform(x0)
         XF = self.coords_transform(xf)
-        self.canvas.create_line(X0[0], X0[1], XF[1],
-                                XF[0], fill=color, **kargs)
+        self.canvas.create_line(X0[0], X0[1], XF[0],
+                                XF[1], fill=color, **kargs)
 
 
 if __name__ == '__main__':

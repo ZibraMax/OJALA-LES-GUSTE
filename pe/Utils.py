@@ -1,6 +1,10 @@
 import numpy as np
 
 
+def point_point_distance(p1, p2):
+    return np.linalg.norm(np.array(p2)-np.array(p1))
+
+
 def point_to_line_distance(p, x0, xf):
     x = p[0]
     y = p[1]
