@@ -37,29 +37,63 @@ class Sim():
         self.region.canvas.bind('<Button-3>', self.right_click)
         self.region.root.bind('<KeyRelease>', self.keyup)
         self.region.root.bind('<MouseWheel>', self.wheel)
-        # self.region.root.bind('<Motion>', self.moving)
+        self.region.canvas.bind('<Motion>', self.move)
         self.gen_forces = []
-        self.gen_forces_mult = 0.0
+        self.gen_forces_mult = 1.0
         self.springs = []
         self.adding_spring = False
-        self.pause = False
+        self.pause = True
         self.nearI = None
         self.nearF = None
         self.dt = dt
-        self.adding_line = False
-
-    def moving(self, event):
-        if self.adding_spring:
-            self.update_graphics()
-            X = np.array([event.x, event.y])
-            X = self.region._coords_transform(X)
-            self.region.create_line(self.nodes[self.nearI].U, X, color='gray')
+        self.adding_line = True
+        self.moving_mass = False
+        self.move_flag = False
 
     def info_text(self):
         deltax = self.region.xrange[-1] - self.region.xrange[0]
         deltay = self.region.yrange[-1] - self.region.yrange[0]
         self.region.create_text(
             [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.1], f'dt={self.dt:.5f}')
+
+        if self.adding_line:
+            self.region.create_text(
+                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.92], f'Poniendo barrera, oprima la tecla L para poner un resorte.')
+            if self.adding_spring:
+                self.region.create_text(
+                    [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.9], f'Haga click derecho en un segundo sitio para agregar una barrera.')
+            else:
+                self.region.create_text(
+                    [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.9], f'Haga click derecho en cualquier sitio para poner una barrera.')
+        else:
+            self.region.create_text(
+                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.92], f'Poniendo resorte, oprima la tecla L para poner una barrera.')
+
+            if self.adding_spring:
+                self.region.create_text(
+                    [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.9], f'Haga click derecho en el segundo nodo para poner el resorte.')
+            else:
+                self.region.create_text(
+                    [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.9], f'Haga click derecho en un nodo para poner un resorte.')
+        if self.moving_mass:
+            self.region.create_text(
+                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.88], f'Haga click izquierdo para mover una pelota.')
+        else:
+            self.region.create_text(
+                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.88], f'Haga click izquierdo para agregar una pelota.')
+        self.region.create_text(
+            [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.86], f'Haga click de rueda de ratón para agregar una pelota fija.')
+        self.region.create_text(
+            [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.84], f'Presione G para activar y desactivar las físicas.')
+
+        if self.pause:
+            self.region.create_text(
+                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.82], f'La simulación se encuentra pausada, presione p para despausar.')
+        else:
+            self.region.create_text(
+                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.82], f'La simulación se encuentra coriendo, t={self.t:.5f}')
+        self.region.create_text(
+            [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.8], f'Con la rueda del mouse se puede aumentar o disminuir el dt')
 
     def wheel(self, event):
         delta = event.delta
@@ -73,6 +107,9 @@ class Sim():
             self.pause_trigger()
         elif event.char.lower() == 'l':
             self.adding_line = not self.adding_line
+        elif event.char.lower() == 'm':
+            self.moving_mass = not self.moving_mass
+        self.update_graphics()
 
     def gen_forces_trigger(self):
         self.gen_forces_mult = 1.0 - self.gen_forces_mult
@@ -142,14 +179,32 @@ class Sim():
         self.info_text()
         self.region.update()
 
+    def move(self, event):
+
+        if self.moving_mass and self.move_flag:
+            X = np.array([event.x, event.y])
+            X = self.region._coords_transform(X)
+            self.nodes[self.nearI].U = X
+            self.nodes[self.nearI].V = np.array([0.0, 0.0])
+            # self.update_graphics()
+
     def click(self, event):
         X = np.array([event.x, event.y])
         X = self.region._coords_transform(X)
-        masa = 0.5
-        if len(self.nodes) > 0:
-            masa = self.nodes[-1].m
-        node = Node(masa, X, [0.0, 0.0])
-        self.add_node(node)
+        if self.moving_mass:
+            if not self.move_flag:
+                nodeii = self.nearest_node(X)
+                self.nearI = nodeii
+                self.move_flag = True
+            else:
+                self.move_flag = False
+
+        else:
+            masa = 0.5
+            if len(self.nodes) > 0:
+                masa = self.nodes[-1].m
+            node = Node(masa, X, [0.0, 0.0])
+            self.add_node(node)
         self.update_graphics()
 
     def add_node(self, node):
@@ -166,8 +221,11 @@ class Sim():
         if not self.adding_spring:
             for spring in self.springs:
                 spring.move()
-            for node in self.nodes:
-                node.move(self.t, self.dt)
+            for i, node in enumerate(self.nodes):
+                if self.moving_mass and self.move_flag and self.nearI == i:
+                    pass
+                else:
+                    node.move(self.t, self.dt)
                 node.collide(self.colliders)
 
             self.update_graphics()
@@ -190,6 +248,7 @@ class Sim():
         self.gen_forces.append(force)
 
     def run(self):
+        self.update_graphics()
 
         def f():
             while True and not self.adding_spring and not self.pause:
@@ -218,34 +277,42 @@ class Node():
             self.r = self.m/20
 
     def object_collide(self):
-        for i, o in enumerate(self.parent.nodes):
-            if not i == self.id:
-                dx = o.U[0] - self.U[0]
-                dy = o.U[1] - self.U[1]
-                dist = (dx**2+dy**2)**0.5
-                minDist = o.r + self.r
-                if dist < minDist:
-                    m1 = self.m
-                    m2 = o.m
-                    v1 = self.V
-                    v2 = o.V
-                    x1 = self.U
-                    x2 = o.U
-                    dot1 = 2 * m2 / \
-                        (m1 + m2) * ((v1[0]-v2[0])*(x1[0]-x2[0]) +
-                                     (v1[1]-v2[1])*(x1[1]-x2[1])) / dist / dist
-                    dot2 = 2 * m1 / \
-                        (m1 + m2) * ((v2[0]-v1[0])*(x2[0]-x1[0]) +
-                                     (v2[1]-v1[1])*(x2[1]-x1[1])) / dist / dist
-                    delta1 = [dot1 * (x1[0] - x2[0]), dot1 * (x1[1] - x2[1])]
-                    delta2 = [dot2 * (x2[0] - x1[0]), dot2 * (x2[1] - x1[1])]
-                    self.V[0] -= delta1[0]
-                    self.V[1] -= delta1[1]
-                    o.V[0] -= delta2[0]
-                    o.V[1] -= delta2[1]
+        if not self.fixed:
+            for i, o in enumerate(self.parent.nodes):
+                if not i == self.id:
+                    dx = o.U[0] - self.U[0]
+                    dy = o.U[1] - self.U[1]
+                    dist = (dx**2+dy**2)**0.5
+                    minDist = o.r + self.r
+                    if dist < minDist:
+                        m1 = self.m
+                        m2 = o.m
+                        v1 = self.V
+                        v2 = o.V
+                        x1 = self.U
+                        x2 = o.U
+                        dot1 = 2 * m2 / \
+                            (m1 + m2) * ((v1[0]-v2[0])*(x1[0]-x2[0]) +
+                                         (v1[1]-v2[1])*(x1[1]-x2[1])) / dist / dist
+                        dot2 = 2 * m1 / \
+                            (m1 + m2) * ((v2[0]-v1[0])*(x2[0]-x1[0]) +
+                                         (v2[1]-v1[1])*(x2[1]-x1[1])) / dist / dist
+                        delta1 = [dot1 * (x1[0] - x2[0]),
+                                  dot1 * (x1[1] - x2[1])]
+                        delta2 = [dot2 * (x2[0] - x1[0]),
+                                  dot2 * (x2[1] - x1[1])]
+                        if o.fixed:
+                            self.V -= 2 * \
+                                np.dot(self.V, np.array(
+                                    [dx, dy]))*np.array([dx, dy])/dist/dist
+                        else:
+                            self.V[0] -= (1-self.fixed)*delta1[0]
+                            self.V[1] -= (1-self.fixed)*delta1[1]
+                            o.V[0] -= delta2[0]
+                            o.V[1] -= delta2[1]
 
-                    self.U += (1-self.fixed)*(dist-minDist) * \
-                        np.array([dx, dy])/dist
+                        self.U += (1-self.fixed)*(dist-minDist) * \
+                            np.array([dx, dy])/dist
 
     def collide(self, colliders):
         self.object_collide()
