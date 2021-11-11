@@ -519,18 +519,18 @@ class Spring():
         self.nodeI = nodeI
         self.nodeF = nodeF
         self.dx = nodeF.U-nodeI.U
-        self.dx0 = nodeF.U-nodeI.U
         self.l = np.linalg.norm(self.dx)
         self.s = 0.0
+        self.dir = self.dx/self.l
         self.d = d
         self.k = k
         self.color = 'green'
 
         def fi(t, obj):
-            return -self.s*self.dir*self.k-self.d*obj.V
+            return self.dir*(self.s*self.k+self.d*np.dot(self.nodeF.V-self.nodeI.V, self.dir))
 
         def ff(t, obj):
-            return self.s*self.dir*self.k-self.d*obj.V
+            return -self.dir*(self.s*self.k+self.d*np.dot(self.nodeF.V-self.nodeI.V, self.dir))
 
         self.nodeI.add_force(fi)
         self.nodeF.add_force(ff)
@@ -540,8 +540,8 @@ class Spring():
         """
         self.dx = self.nodeF.U-self.nodeI.U
         ld = np.linalg.norm(self.dx)
-        self.s = self.l-ld
-        self.dir = np.array([self.dx[0]/ld, self.dx[1]/ld])
+        self.s = ld-self.l
+        self.dir = self.dx/ld
 
     def draw(self, region: Region) -> None:
         """Draws the spring

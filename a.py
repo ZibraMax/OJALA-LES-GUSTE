@@ -42,10 +42,10 @@ gravity = pe.Force(lambda t, obj: np.array([0, -9.81*obj.m]))
 
 # SIM.add_gen_force(force)
 SIM.add_gen_force(gravity)
-n = 2
-m = 2
-r = 0.05
-d = 2.0*r
+n = 5
+m = 5
+r = 0.04
+d = 2.5*r
 x0 = 1
 y0 = 1
 for i in range(n):
@@ -53,8 +53,8 @@ for i in range(n):
         node1 = pe.Node(1, [x0+i*d, y0+j*d], [0.0, 0.0], r=r)
         SIM.add_node(node1)
 nodes = SIM.nodes
-k = 1000
-d = 2
+k = 10000
+d = 5
 for i in range(n-1):
     for j in range(m):
         f = int(j*n+i)
