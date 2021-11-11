@@ -466,9 +466,6 @@ class Node():
             dt (float): Delta time
         """
         if not self.fixed:
-            def f(t, y):
-                return self.V
-            self.U = self.solver.solve(f, t, t+dt, self.U, 1)
 
             def f(t, y):
                 sumatoria = 0.0
@@ -476,6 +473,10 @@ class Node():
                     sumatoria += g(t, self)*self.parent.gen_forces_mult
                 return sumatoria/self.m
             self.V = self.solver.solve(f, t, t+dt, self.V, 1)
+
+            def f(t, y):
+                return self.V
+            self.U = self.solver.solve(f, t, t+dt, self.U, 1)
 
     def fix(self) -> None:
         """Locks the node movement
