@@ -388,7 +388,7 @@ class Node():
         r (float, optional): Node radius. Defaults to None.
     """
 
-    def __init__(self, m: float, U: Union[list, np.ndarray], V: Union[list, np.ndarray], solver: Solver = None, r: float = None) -> None:
+    def __init__(self, m: float, U: Union[list, np.ndarray], V: Union[list, np.ndarray], solver: Solver = None, r: float = None, trace=0) -> None:
         """Creates a node
 
         Args:
@@ -406,6 +406,8 @@ class Node():
         self.parent = None
         self.id = None
         self.fixed = False
+        self.trace = trace
+        self.Uh = []
         if not solver:
             self.solver = Solver()
         self.r = r
@@ -456,7 +458,7 @@ class Node():
         """Makes the node collide with the colliders given by parameters
 
         Args:
-            colliders (List[LinealCollider]): Colliders 
+            colliders (List[LinealCollider]): Colliders
         """
         self.object_collide()
         for collider in colliders:
@@ -489,6 +491,8 @@ class Node():
             def f(t, y):
                 return self.V
             self.U = self.solver.solve(f, t, t+dt, self.U, 1)
+            if self.trace:
+                self.Uh += [self.U.tolist()]
 
     def fix(self) -> None:
         """Locks the node movement
@@ -505,6 +509,14 @@ class Node():
             region.create_circle(self.U, self.r, color='red')
         else:
             region.create_circle(self.U, self.r, color='blue')
+        if self.trace:
+            if self.trace == -1:
+                n = len(self.Uh)
+            else:
+                n = min(self.trace, len(self.Uh))
+            for i in range(1, n):
+                region.create_line(np.array(self.Uh[-i]), np.array(self.Uh[-(i+1)]),
+                                   color='gray', width=3)
 
 
 class Spring():
