@@ -3,6 +3,7 @@ from .Solvers import *
 from .Colliders import *
 from .Utils import point_point_distance as p2p
 import numpy as np
+import os
 
 
 class Force(object):
@@ -49,7 +50,7 @@ class Sim():
         dt (float, optional): Time step. Defaults to 1/500.
     """
 
-    def __init__(self, x_range: Union[list, np.ndarray], y_range: Union[list, np.ndarray], dt: float = 1/500) -> None:
+    def __init__(self, x_range: Union[list, np.ndarray], y_range: Union[list, np.ndarray], dt: float = 1/500, frames_folder=None) -> None:
         """Creates a simulation object
 
         Args:
@@ -79,6 +80,13 @@ class Sim():
         self.adding_line = True
         self.moving_mass = False
         self.move_flag = False
+        self.frame = 0
+        self.frames_folder = frames_folder
+        if frames_folder:
+            try:
+                os.mkdir(frames_folder)
+            except Exception as e:
+                pass
 
     def info_text(self) -> None:
         """Place information text in canvas
@@ -325,6 +333,10 @@ class Sim():
 
             self.update_graphics()
             self.t += self.dt
+            if self.t >= self.frame*1/60 and self.frames_folder:
+                self.region.image(f'{self.frames_folder}/f_{self.frame}.png')
+                self.frame += 1
+
         # time.sleep(1)
 
     def draw_springs(self) -> None:

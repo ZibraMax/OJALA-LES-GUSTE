@@ -2,6 +2,8 @@ from tkinter import Event, Tk, Canvas, W, E, NW
 from typing import Union
 import numpy as np
 
+from PIL import ImageGrab
+
 
 class Region():
     """Creates the canvas drawing region
@@ -35,6 +37,13 @@ class Region():
         self.root.bind('<Escape>', lambda e: self.root.destroy())
         self.root.state('zoomed')
         self.canvas.bind('<Button-1>', self.click)
+
+    def image(self, filepath):
+        x = self.root.winfo_rootx()+self.canvas.winfo_x()
+        y = self.root.winfo_rooty()+self.canvas.winfo_y()
+        x1 = x+self.canvas.winfo_width()
+        y1 = y+self.canvas.winfo_height()
+        ImageGrab.grab().crop((x, y, x1, y1)).save(filepath)
 
     def coords_transform(self, X: Union[list, np.ndarray]) -> np.ndarray:
         """Transform from canvas coordinates to pixel coordinates
