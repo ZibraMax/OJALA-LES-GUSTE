@@ -32,10 +32,15 @@ SIM.add_collider(wall)
 wall = pe.Colliders.Wall([0.0, h], [0.0, 0.0])
 SIM.add_collider(wall)
 
-for i in range(100):
-    masa = 0.3
-    node = pe.Node(masa, (np.random.rand()*0.9+0.05,
-                   np.random.rand()*0.9+0.05), [np.random.rand()*(1 if np.random.rand() >= 0.5 else -1)*0.3, np.random.rand()*(1 if np.random.rand() >= 0.5 else -1)*0.3])
-    SIM.add_node(node)
+masa = 0.3
+r = 0.05
+node = pe.Node(masa, (0.2, 0.6), [0.1, 0.0], r=r)
+SIM.add_node(node)
+
+node = pe.Node(masa, (0.5, 0.6), [0.0, 0.0], r=r)
+SIM.add_node(node)
+
+node = pe.Node(masa, (0.5+2*r, 0.6), [0.0, 0.0], r=r)
+SIM.add_node(node)
 
 SIM.run()

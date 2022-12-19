@@ -50,7 +50,7 @@ class Quadrant():
 
 class QuadTree():
 
-    def __init__(self, boundary: Quadrant, n: int = 2, depth: int = 1) -> None:
+    def __init__(self, boundary: Quadrant, n: int = 1, depth: int = 1) -> None:
         self.boundary = boundary
         self.points = []
         self.n = n
