@@ -6,7 +6,7 @@ from pe.Sim import Spring
 
 h = 3.0
 
-SIM = pe.Sim([0, h], [0, h])
+SIM = pe.Sim([0, h], [0, h], dt=1/1000)
 
 wall = pe.Colliders.Wall([0.0, 0.0], [h, 0.0])
 SIM.add_collider(wall)

@@ -42,8 +42,8 @@ gravity = pe.Force(lambda t, obj: np.array([0, -9.81*obj.m]))
 
 # SIM.add_gen_force(force)
 SIM.add_gen_force(gravity)
-n = 5
-m = 5
+n = 7
+m = 7
 r = 0.04
 d = 2.5*r
 x0 = 1

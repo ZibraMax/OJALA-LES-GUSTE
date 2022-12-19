@@ -1,5 +1,7 @@
+import time
 from .Region import Region, Event
 from .Solvers import *
+from .Quadtree import *
 from .Colliders import *
 from .Utils import point_point_distance as p2p
 import numpy as np
@@ -60,9 +62,15 @@ class Sim():
         """
 
         self.region = Region(x_range, y_range)
+        W = x_range[-1]-x_range[0]
+        H = y_range[-1]-y_range[0]
+        self.boundary = Quadrant(((x_range[-1]+x_range[0])/2,
+                                  (y_range[-1]+y_range[0])/2), (W/2, H/2))
+        self.QuadTree = QuadTree(self.boundary)
         self.nodes = []
         self.colliders = []
         self.t = 0.0
+        self.max_radius = -np.inf
         self.region.canvas.bind('<Button-1>', self.click)
         self.region.canvas.bind('<Button-2>', self.middle_click)
         self.region.canvas.bind('<Button-3>', self.right_click)
@@ -77,11 +85,13 @@ class Sim():
         self.nearI = None
         self.nearF = None
         self.dt = dt
+        self.fps = 60
         self.adding_line = True
         self.moving_mass = False
         self.move_flag = False
         self.frame = 0
         self.frames_folder = frames_folder
+        self.draw_quad_tree_flag = False
         if frames_folder:
             try:
                 os.mkdir(frames_folder)
@@ -131,7 +141,7 @@ class Sim():
                 [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.82], f'La simulación se encuentra pausada, presione p para despausar.')
         else:
             self.region.create_text(
-                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.82], f'La simulación se encuentra coriendo, t={self.t:.5f}')
+                [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.82], f'La simulación se encuentra coriendo, t={self.t:.5f}. fps={self.fps:.2f}')
         self.region.create_text(
             [self.region.xrange[0]+deltax*0.1, self.region.yrange[0]+deltay*0.8], f'Con la rueda del mouse se puede aumentar o disminuir el dt')
 
@@ -160,6 +170,8 @@ class Sim():
             self.adding_line = not self.adding_line
         elif event.char.lower() == 'm':
             self.moving_mass = not self.moving_mass
+        elif event.char.lower() == 't':
+            self.draw_quad_tree_flag = not self.draw_quad_tree_flag
         self.update_graphics()
 
     def gen_forces_trigger(self) -> None:
@@ -257,8 +269,13 @@ class Sim():
         self.draw_colliders()
         self.draw_springs()
         self.draw_nodes()
+        if self.draw_quad_tree_flag:
+            self.draw_quad_tree()
         self.info_text()
         self.region.update()
+
+    def draw_quad_tree(self):
+        self.QuadTree.draw(self.region)
 
     def move(self, event: Event) -> None:
         """Mouse move event
@@ -304,6 +321,8 @@ class Sim():
         Args:
             node (Node): Node to add
         """
+        if node.r > self.max_radius:
+            self.max_radius = node.r
         for force in self.gen_forces:
             node.add_force(force)
         node.parent = self
@@ -321,6 +340,11 @@ class Sim():
     def update(self) -> None:
         """Runs a simulation frame
         """
+        clock_start = time.time()
+        self.QuadTree = QuadTree(self.boundary)
+        for node in self.nodes:
+            self.QuadTree.add_point(node)
+
         if not self.adding_spring:
             for spring in self.springs:
                 spring.move()
@@ -336,7 +360,8 @@ class Sim():
             if self.t >= self.frame*1/60 and self.frames_folder:
                 self.region.image(f'{self.frames_folder}/f_{self.frame}.png')
                 self.frame += 1
-
+        clock_end = time.time()
+        self.fps = 1/(clock_end-clock_start)
         # time.sleep(1)
 
     def draw_springs(self) -> None:
@@ -418,8 +443,11 @@ class Node():
         """Object object collision
         """
         if not self.fixed:
-            for i, o in enumerate(self.parent.nodes):
-                if not i == self.id:
+            ran = Quadrant(self.U, (2*self.parent.max_radius,
+                           2*self.parent.max_radius))
+            collision_nodes = self.parent.QuadTree.query_range(ran)
+            for i, o in enumerate(collision_nodes):
+                if not o.id == self.id:
                     dx = o.U[0] - self.U[0]
                     dy = o.U[1] - self.U[1]
                     dist = (dx**2+dy**2)**0.5
@@ -481,16 +509,12 @@ class Node():
         """
         if not self.fixed:
 
-            def f(t, y):
-                sumatoria = 0.0
-                for g in self.forces:
-                    sumatoria += g(t, self)*self.parent.gen_forces_mult
-                return sumatoria/self.m
-            self.V = self.solver.solve(f, t, t+dt, self.V, 1)
-
-            def f(t, y):
-                return self.V
-            self.U = self.solver.solve(f, t, t+dt, self.U, 1)
+            sumatoria = 0.0
+            for g in self.forces:
+                sumatoria += g(t, self)*self.parent.gen_forces_mult
+            sumatoria = sumatoria/self.m
+            self.V = self.V+sumatoria*dt
+            self.U += self.V*dt
             if self.trace:
                 self.Uh += [self.U.tolist()]
 
